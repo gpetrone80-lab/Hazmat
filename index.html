@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hazmat Form Portal</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1c92d2">
+    <link rel="apple-touch-icon" href="Hazmat_logo.png">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="Hazmat_logo.png">
+</head>
+<body data-theme="glass">
+
+    <div class="view-controls">
+        <select id="themeSelect" class="theme-select" title="Change Design Style">
+            <option value="glass">Design 1: Glass Ocean</option>
+            <option value="tactical">Design 2: Tactical Ops</option>
+            <option value="minimal">Design 3: Swiss Minimal</option>
+        </select>
+
+        <button id="modeToggle" class="icon-btn" title="Toggle Dark/Light Mode">🌙</button>
+        
+        <button id="installBtn" class="icon-btn" style="display:none;" title="Install App">⬇️</button>
+        
+        <button id="shareBtn" class="icon-btn" title="Share Portal Link">🔗</button>
+    </div>
+
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal close-share">&times;</span>
+            <h3 class="share-title">Share Portal</h3>
+            <p class="share-text">Copy link:</p>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="shareInput" class="std-input" readonly>
+                <button id="copyBtn" class="link-btn primary" style="width:auto;">Copy</button>
+            </div>
+            <div id="copyMessage" style="color:green; display:none; margin-top:10px;">Copied!</div>
+        </div>
+    </div>
+
+    <div class="container" id="mainContainer">
+        <img src="Hazmat_logo.png" alt="Logo" class="profile-img">
+        <div class="profile-title" id="pageTitle">Company Forms Portal</div>
+        <div class="profile-bio" id="pageBio">Select a category below to access the relevant form.</div>
+
+        <div class="input-group">
+            <input type="text" id="searchInput" class="std-input" placeholder="🔍 Search forms, protocols...">
+        </div>
+
+        <div id="buttonContainer" style="display:flex; flex-direction:column; gap:14px;"></div>
+
+        <footer>&copy; <span id="year"></span> All Rights Reserved.</footer>
+    </div>
+
+    <script>
+        // --- DATA & RENDER LOGIC ---
+        const config = {
+            pageTitle: "Pinellas County Hazmat Team",
+            pageBio: "Select a category below to access the Hazmat Team forms.",
+            links: [
+                { type: "header", title: "Field Tools" },
+                { title: "Skydio Log In", url: "https://cloud.skydio.com/entry/login" },
+                { title: "Foam Calculator", url: "Foamcalculator.html" },
+                { title: "Hazmat Board", url: "Hazmatboard.html" },
+                { title: "Cameo Chemicals", url: "https://cameochemicals.noaa.gov/" },
+                { title: "ERG (Response Guide)", url: "https://www.phmsa.dot.gov/sites/phmsa.dot.gov/files/2024-04/ERG2024-Eng-Web-a.pdf" },
+                { type: "header", title: "Medical" },
+                { title: "Hazmat Medical Protocol", url: "#" }, 
+                { type: "header", title: "SOP & Forms" },
+                { title: "Hazmat SOP", url: "#" }, 
+                { title: "ICS FORMS", url: "#" }, 
+            ]
+        };
+
+        // Render
+        document.getElementById('pageTitle').textContent = config.pageTitle;
+        document.getElementById('pageBio').textContent = config.pageBio;
+        document.getElementById('year').textContent = new Date().getFullYear();
+        const container = document.getElementById('buttonContainer');
+
+        config.links.forEach(link => {
+            if (link.type === 'header') {
+                const header = document.createElement('div');
+                header.className = 'section-header';
+                header.textContent = link.title;
+                container.appendChild(header);
+            } else {
+                const a = document.createElement('a');
+                a.className = 'link-btn';
+                a.href = link.url;
+                a.textContent = link.title;
+                if(link.url.startsWith('http')) a.target = "_blank";
+                container.appendChild(a);
+            }
+        });
+
+        // --- SEARCH LOGIC ---
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.link-btn').forEach(btn => {
+                btn.style.display = btn.textContent.toLowerCase().includes(term) ? 'block' : 'none';
+            });
+        });
+
+        // --- THEME LOGIC ---
+        const body = document.body;
+        const themeSelect = document.getElementById('themeSelect');
+        const modeToggle = document.getElementById('modeToggle');
+
+        if(localStorage.getItem('theme')) {
+            body.setAttribute('data-theme', localStorage.getItem('theme'));
+            themeSelect.value = localStorage.getItem('theme');
+        }
+        if(localStorage.getItem('darkMode') === 'true') {
+            body.classList.add('dark-mode');
+            modeToggle.textContent = '☀️';
+        }
+
+        themeSelect.addEventListener('change', (e) => {
+            body.setAttribute('data-theme', e.target.value);
+            localStorage.setItem('theme', e.target.value);
+        });
+
+        modeToggle.addEventListener('click', () => {
+            body.classList.toggle('dark-mode');
+            const isDark = body.classList.contains('dark-mode');
+            modeToggle.textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark);
+        });
+        
+        // Share Modal
+        const shareModal = document.getElementById('shareModal');
+        document.getElementById('shareBtn').onclick = () => {
+            shareModal.style.display = "block";
+            document.getElementById('shareInput').value = window.location.href;
+        };
+        document.querySelector('.close-share').onclick = () => shareModal.style.display = "none";
+        window.onclick = (e) => { if(e.target == shareModal) shareModal.style.display = "none"; };
+
+        // --- PWA SERVICE WORKER REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker failed', err));
+            });
+        }
+
+        // --- PWA INSTALL PROMPT LOGIC ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'flex'; // Show the button
+        });
+
+        installBtn.addEventListener('click', (e) => {
+            installBtn.style.display = 'none';
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the A2HS prompt');
+                }
+                deferredPrompt = null;
+            });
+        });
+    </script>
+</body>
+</html>

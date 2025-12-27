@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foam Fire Flow Calculator</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1c92d2">
+    <link rel="apple-touch-icon" href="Hazmat_logo.png">
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="Hazmat_logo.png">
+</head>
+<body data-theme="glass">
+
+    <div class="view-controls">
+        <a href="index.html" class="icon-btn" title="Back to Dashboard">🏠</a>
+        <select id="themeSelect" class="theme-select" title="Change Design Style">
+            <option value="glass">Glass Ocean</option>
+            <option value="tactical">Tactical Ops</option>
+            <option value="minimal">Swiss Minimal</option>
+        </select>
+        <button id="modeToggle" class="icon-btn" title="Toggle Dark/Light Mode">🌙</button>
+    </div>
+
+    <div class="container">
+        <div class="profile-title">Foam Flow Calculator</div>
+        <div class="profile-bio">Calculate required application rates and foam concentrate needs.</div>
+
+        <div class="input-group">
+            <label for="inputX" class="input-label">AREA INPUT (Square Feet)</label>
+            <input type="number" id="inputX" value="1000" min="0" step="1" oninput="calculate()" class="std-input" placeholder="e.g., 1000">
+        </div>
+
+        <div class="section-header">Step 1: Application Type (NAR)</div>
+        <div class="radio-group" onchange="calculate()">
+            <input type="radio" id="nar01" name="narFactor" value="0.1" class="radio-input" checked>
+            <label for="nar01" class="radio-label">
+                <span style="display:block; font-size:1.2em">0.1</span> Hydrocarbon
+            </label>
+            <input type="radio" id="nar02" name="narFactor" value="0.2" class="radio-input">
+            <label for="nar02" class="radio-label">
+                <span style="display:block; font-size:1.2em">0.2</span> Polar Solvent
+            </label>
+        </div>
+
+        <div class="section-header">Step 2: Foam Concentrate % (CPM)</div>
+        <div class="radio-group" onchange="calculate()">
+            <input type="radio" id="cpm003" name="cpmFactor" value="0.03" class="radio-input" checked>
+            <label for="cpm003" class="radio-label">
+                <span style="display:block; font-size:1.2em">3%</span> Hydrocarbon
+            </label>
+            <input type="radio" id="cpm006" name="cpmFactor" value="0.06" class="radio-input">
+            <label for="cpm006" class="radio-label">
+                <span style="display:block; font-size:1.2em">6%</span> Polar Solvent
+            </label>
+        </div>
+
+        <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
+            <button onclick="calculate()" class="link-btn primary">Calculate Needs</button>
+            <button onclick="resetApp()" class="link-btn">Reset Form</button>
+        </div>
+
+        <div class="section-header">Results (15 Min Duration)</div>
+        <div class="card-grid">
+            <div class="info-card">
+                <div style="font-size:12px; opacity:0.8;">Flow Rate (GPM)</div>
+                <div id="resultNAR" style="font-size:28px; font-weight:800; margin: 5px 0;">100.0</div>
+                <div style="font-size:14px; font-weight:600;">NAR</div>
+            </div>
+            <div class="info-card">
+                <div style="font-size:12px; opacity:0.8;">Total Water (Gal)</div>
+                <div id="resultOverallFlow" style="font-size:28px; font-weight:800; margin: 5px 0;">1500.0</div>
+                <div style="font-size:14px; font-weight:600;">15 Min Need</div>
+            </div>
+            <div class="info-card">
+                <div style="font-size:12px; opacity:0.8;">Conc. Flow (GPM)</div>
+                <div id="resultCPM" style="font-size:28px; font-weight:800; margin: 5px 0;">3.0</div>
+                <div style="font-size:14px; font-weight:600;">CPM</div>
+            </div>
+            <div class="info-card">
+                <div style="font-size:12px; opacity:0.8;">Total Foam (Gal)</div>
+                <div id="resultFoamNeed" style="font-size:28px; font-weight:800; margin: 5px 0;">45.0</div>
+                <div style="font-size:14px; font-weight:600;">Foam Need</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // THEME LOGIC
+        const body = document.body;
+        const themeSelect = document.getElementById('themeSelect');
+        const modeToggle = document.getElementById('modeToggle');
+        if(localStorage.getItem('theme')) { body.setAttribute('data-theme', localStorage.getItem('theme')); themeSelect.value = localStorage.getItem('theme'); }
+        if(localStorage.getItem('darkMode') === 'true') { body.classList.add('dark-mode'); modeToggle.textContent = '☀️'; }
+        themeSelect.addEventListener('change', (e) => { body.setAttribute('data-theme', e.target.value); localStorage.setItem('theme', e.target.value); });
+        modeToggle.addEventListener('click', () => { body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', body.classList.contains('dark-mode')); modeToggle.textContent = body.classList.contains('dark-mode') ? '☀️' : '🌙'; });
+
+        // CALCULATOR LOGIC
+        const FIXED_MINUTES = 15;
+        const inputXEl = document.getElementById('inputX');
+        const resultNAREl = document.getElementById('resultNAR');
+        const resultCPMEI = document.getElementById('resultCPM');
+        const resultFoamNeedEl = document.getElementById('resultFoamNeed');
+        const resultOverallFlowEl = document.getElementById('resultOverallFlow');
+
+        function calculate() {
+            const inputX = parseFloat(inputXEl.value) || 0;
+            const narFactor = parseFloat(document.querySelector('input[name="narFactor"]:checked').value);
+            const cpmFactor = parseFloat(document.querySelector('input[name="cpmFactor"]:checked').value);
+            if (inputX < 0) return;
+            const nar = inputX * narFactor;
+            resultNAREl.textContent = nar.toFixed(1);
+            const cpm = nar * cpmFactor;
+            resultCPMEI.textContent = cpm.toFixed(1);
+            const foamNeed = cpm * FIXED_MINUTES;
+            resultFoamNeedEl.textContent = foamNeed.toFixed(1);
+            const overallFlow = nar * FIXED_MINUTES;
+            resultOverallFlowEl.textContent = overallFlow.toFixed(1);
+        }
+        function resetApp() {
+            inputXEl.value = ""; 
+            document.getElementById('nar01').checked = true;
+            document.getElementById('cpm003').checked = true;
+            calculate();
+        }
+        window.onload = calculate;
+
+        // PWA REGISTER
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js'); });
+        }
+    </script>
+</body>
+</html>
